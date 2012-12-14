@@ -1,0 +1,138 @@
+#
+# (c) Andy Rawson 2012
+#
+# http://rhworkshop.com
+#
+
+
+dim offset
+dim i
+dim r
+dim r2
+dim r3
+dim t(32)
+dim ptat(2)
+dim vcp(2)
+dim eepromData(32)
+dim configData(5)
+dim oscTrim
+
+const eAddress=$a0
+const rAddress=$c0
+
+#init gap mod, bonding and start freerunning times on system boot
+event system_boot(major ,minor ,patch ,build ,ll_version ,protocol_version ,hw )
+	call gap_set_mode(2,2)
+	call sm_set_bondable_mode(1)
+	call hardware_set_soft_timer(8000,0,0)
+
+	# Set sensor type: 1 = MLX90620 0 = Grid-Eye
+	call attributes_write(xgatt_sensor_type,0,1,1)
+
+	call hardware_i2c_write(eAddress, 1, 1, $F7)(r)
+	call hardware_i2c_read(eAddress,1,1)(r2,r3,oscTrim)
+
+	# Set the Sensor RAM Config
+	configData(0:1)=$03
+	configData(1:1)=$b7
+	configData(2:1)=$0c
+	configData(3:1)=$1f
+	configData(4:1)=$74
+	
+	# Set the Sensor RAM OSC Trim
+	call hardware_i2c_write(rAddress, 1, 5, configData(0:5))(r)
+	configData(0:1)=$04
+	configData(1:1)=oscTrim - $AA
+	configData(2:1)=oscTrim
+	configData(3:1)=$56
+	configData(4:1)=$00
+	call hardware_i2c_write(rAddress, 1, 5, configData(0:5))(r)
+	
+	# Read the EEPROM Data
+	call hardware_i2c_write(eAddress, 1, 1, $00)(r)
+	call hardware_i2c_read(eAddress,1,32)(r2,r3,eepromData(0:32))
+	call attributes_write(xgatt_read_eeprom,0,32,eepromData(0:32))
+	call hardware_i2c_write(eAddress, 1, 1, $20)(r)
+	call hardware_i2c_read(eAddress,1,32)(r2,r3,eepromData(0:32))
+	call attributes_write(xgatt_read_eeprom,32,32,eepromData(0:32))
+	call hardware_i2c_write(eAddress, 1, 1, $40)(r)
+	call hardware_i2c_read(eAddress,1,32)(r2,r3,eepromData(0:32))
+	call attributes_write(xgatt_read_eeprom,64,32,eepromData(0:32))
+	call hardware_i2c_write(eAddress, 1, 1, $60)(r)
+	call hardware_i2c_read(eAddress,1,32)(r2,r3,eepromData(0:32))
+	call attributes_write(xgatt_read_eeprom,96,32,eepromData(0:32))
+	call hardware_i2c_write(eAddress, 1, 1, $80)(r)
+	call hardware_i2c_read(eAddress,1,32)(r2,r3,eepromData(0:32))
+	call attributes_write(xgatt_read_eeprom,128,32,eepromData(0:32))
+	call hardware_i2c_write(eAddress, 1, 1, $A0)(r)
+	call hardware_i2c_read(eAddress,1,32)(r2,r3,eepromData(0:32))
+	call attributes_write(xgatt_read_eeprom,160,32,eepromData(0:32))
+	call hardware_i2c_write(eAddress, 1, 1, $C0)(r)
+	call hardware_i2c_read(eAddress,1,32)(r2,r3,eepromData(0:32))
+	call attributes_write(xgatt_read_eeprom,192,32,eepromData(0:32))
+	call hardware_i2c_write(eAddress, 1, 1, $E0)(r)
+	call hardware_i2c_read(eAddress,1,32)(r2,r3,eepromData(0:32))
+	call attributes_write(xgatt_read_eeprom,224,31,eepromData(0:31))
+	
+	
+end
+
+#timer expired
+event hardware_soft_timer(handle)
+
+	configData(0:1)=$02
+	configData(1:1)=$00
+	configData(2:1)=$01
+	configData(3:1)=$10
+	
+	# get the IR Data 1
+	call hardware_i2c_write(rAddress, 0, 4, configData(0:4))(r)
+	call hardware_i2c_read(rAddress,1,32)(r2,r3,t(0:32))
+
+	call attributes_write(xgatt_read_temp,0,32,t(0:32))
+	
+	# get the IR Data 2
+	configData(1:1)=$10
+	call hardware_i2c_write(rAddress, 0, 4, configData(0:4))(r)
+	call hardware_i2c_read(rAddress,1,32)(r2,r3,t(0:32))
+
+	call attributes_write(xgatt_read_temp,32,32,t(0:32))
+
+	# get the IR Data 3
+	configData(1:1)=$20
+	call hardware_i2c_write(rAddress, 0, 4, configData(0:4))(r)
+	call hardware_i2c_read(rAddress,1,32)(r2,r3,t(0:32))
+
+	call attributes_write(xgatt_read_temp,64,32,t(0:32))
+
+	# get the IR Data 4
+	configData(1:1)=$30
+	call hardware_i2c_write(rAddress, 0, 4, configData(0:4))(r)
+	call hardware_i2c_read(rAddress,1,32)(r2,r3,t(0:32))
+	
+	call attributes_write(xgatt_read_temp,96,32,t(0:32))
+
+	# Get PTAT data
+	configData(0:1)=$02
+	configData(1:1)=$90
+	configData(2:1)=$00
+	configData(3:1)=$01
+	call hardware_i2c_write(rAddress, 0, 4, configData(0:4))(r)
+	call hardware_i2c_read(rAddress,1,2)(r2,r3,ptat(0:2))
+	configData(1:1)=$91
+	call hardware_i2c_write(rAddress, 0, 4, configData(0:4))(r)
+	call hardware_i2c_read(rAddress,1,2)(r2,r3,vcp(0:2))
+
+	#call attributes_write(xgatt_ptat,0,1,ptat(0:1))
+	call attributes_write(xgatt_read_temp,128,2,ptat(0:2))
+	call attributes_write(xgatt_read_temp,130,2,vcp(0:2))
+
+end
+
+event connection_disconnected(handle,result)
+    call gap_set_mode(gap_general_discoverable,gap_undirected_connectable)
+end
+
+
+
+

@@ -1,0 +1,7 @@
+xgatt_read_temp1 21
+xgatt_read_temp2 25
+xgatt_read_temp3 29
+xgatt_read_temp4 33
+xgatt_read_temp 37
+xgatt_sensor_type 41
+xgatt_read_eeprom 44
